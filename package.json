@@ -1,0 +1,16 @@
+{
+  "name": "bot-full-service-chiloe",
+  "version": "1.0.0",
+  "description": "Asistente de dudas para oficinas Full Service (web + WhatsApp), basado en los manuales de operación.",
+  "type": "module",
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "start": "node server.js",
+    "test": "node test/smoke.mjs"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.68.0",
+    "express": "^4.21.0",
+    "express-rate-limit": "^7.4.0"
+  }
+}
