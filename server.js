@@ -1,6 +1,7 @@
 import express from 'express';
 import rateLimit from 'express-rate-limit';
 import path from 'node:path';
+import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { answer, cleanTurns, FRIENDLY_ERROR, kbInfo } from './lib/assistant.js';
 import { verifySignature, parseIncoming, sendText, toWhatsAppFormat, outbox } from './lib/whatsapp.js';
@@ -13,6 +14,61 @@ const env = process.env;
 const allowed = (env.ALLOWED_ORIGINS || '').split(',').map(s => s.trim()).filter(Boolean);
 
 app.use(express.json({ limit: '30kb', verify: (req, _res, buf) => { req.rawBody = buf; } }));
+app.use(express.urlencoded({ extended: false }));
+
+// ---------- Login simple (una sola clave compartida, protege toda la página) ----------
+// Se activa solo si defines SITE_PASSWORD en las variables de entorno. Sin ella, el sitio queda abierto.
+const SITE_PASSWORD = env.SITE_PASSWORD || '';
+const AUTH_TOKEN = SITE_PASSWORD ? crypto.createHmac('sha256', SITE_PASSWORD).update('fs-auth-v1').digest('hex') : '';
+function getCookie(req, name) {
+  const m = (req.headers.cookie || '').match(new RegExp('(?:^|; )' + name + '=([^;]*)'));
+  return m ? decodeURIComponent(m[1]) : '';
+}
+function isAuthed(req) { return !SITE_PASSWORD || getCookie(req, 'fs_auth') === AUTH_TOKEN; }
+
+function loginPage(error) {
+  return `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ingresar · Full Service Chiloé</title><style>
+*{box-sizing:border-box}body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:#0A0A0A;font-family:'Segoe UI',Arial,sans-serif;color:#1F1F1F;padding:20px}
+.box{width:100%;max-width:360px;background:#FFF;border-top:8px solid #FFE600;border-radius:12px;padding:28px 24px;box-shadow:0 14px 40px rgba(0,0,0,.35)}
+h1{margin:0 0 4px;font-size:20px;font-weight:900}p{margin:0 0 18px;font-size:13px;color:#6A6A6A}
+label{display:block;font-size:12px;font-weight:800;text-transform:uppercase;color:#6A6A6A;margin-bottom:6px}
+input{width:100%;font-size:16px;padding:11px 12px;border:1px solid #CFCFCF;border-radius:9px;background:#F6F6F4}
+input:focus{outline:3px solid #1B6BD1;outline-offset:1px}
+button{width:100%;margin-top:14px;font-weight:800;font-size:15px;background:#0A0A0A;color:#FFE600;border:0;border-radius:9px;padding:12px;cursor:pointer}
+.err{background:#FDECEC;color:#B02020;border-radius:8px;padding:9px 11px;font-size:13px;margin-bottom:14px}
+</style></head><body><form class="box" method="POST" action="/login">
+<h1>Full Service · Zona Chiloé</h1><p>Ingresa la clave para acceder.</p>
+${error ? '<div class="err">' + error + '</div>' : ''}
+<label for="p">Clave</label>
+<input id="p" name="password" type="password" autofocus autocomplete="current-password" required>
+<button type="submit">Entrar</button>
+</form></body></html>`;
+}
+
+const loginLimiter = rateLimit({ windowMs: 10 * 60 * 1000, limit: 10, standardHeaders: true, legacyHeaders: false, message: 'Demasiados intentos. Espera unos minutos.' });
+app.get('/login', (req, res) => { if (isAuthed(req)) return res.redirect('/'); res.send(loginPage('')); });
+app.post('/login', loginLimiter, (req, res) => {
+  if (SITE_PASSWORD && req.body?.password === SITE_PASSWORD) {
+    res.cookie('fs_auth', AUTH_TOKEN, { httpOnly: true, sameSite: 'lax', secure: true, maxAge: 30 * 24 * 60 * 60 * 1000 });
+    return res.redirect('/');
+  }
+  res.status(401).send(loginPage('Clave incorrecta. Inténtalo de nuevo.'));
+});
+app.get('/logout', (_req, res) => { res.clearCookie('fs_auth'); res.redirect('/login'); });
+
+// Puerta: exige sesión para todo, salvo el propio login, /health y el webhook de WhatsApp.
+app.use((req, res, next) => {
+  if (isAuthed(req) || req.method === 'OPTIONS') return next();
+  const p = req.path;
+  if (p === '/login' || p === '/logout' || p === '/health' || p.startsWith('/webhook')) return next();
+  if (p.startsWith('/api')) {
+    if (env.CHAT_ACCESS_KEY && req.get('x-access-key') === env.CHAT_ACCESS_KEY) return next();
+    return res.status(401).json({ error: 'Sesión requerida. Inicia sesión en la página.' });
+  }
+  res.send(loginPage(''));
+});
 
 // ---------- Tope diario de consultas (control de costos) ----------
 const DAILY_MAX = Number(env.DAILY_MAX || 500);
