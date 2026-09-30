@@ -80,6 +80,7 @@ a{color:inherit}
 .cb-fab{position:fixed;right:16px;bottom:calc(16px + env(safe-area-inset-bottom,0px));z-index:40;display:flex;align-items:center;gap:9px;font:inherit;font-weight:800;font-size:14px;background:#FFE600;color:#111111;border:2px solid #0A0A0A;border-radius:999px;padding:11px 18px 11px 14px;cursor:pointer;box-shadow:0 6px 18px rgba(0,0,0,.25)}
 .cb-fab svg{width:22px;height:22px;stroke:#111;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .cb-panel{position:fixed;right:16px;bottom:calc(16px + env(safe-area-inset-bottom,0px));z-index:50;width:min(410px,calc(100vw - 32px));height:min(600px,calc(100dvh - 32px - env(safe-area-inset-bottom,0px)));display:flex;flex-direction:column;background:#FFFFFF;color:#1F1F1F;border:1px solid #BEBEBE;border-radius:14px;box-shadow:0 14px 40px rgba(0,0,0,.28);overflow:hidden}
+.cb-panel[hidden],.cb-fab[hidden]{display:none}
 .cb-head{background:#0A0A0A;color:#FFFFFF;border-top:5px solid #FFE600;padding:13px 14px 12px;display:flex;gap:10px;align-items:center}
 .cb-head .cb-ic{flex:0 0 34px;height:34px;border-radius:8px;background:#FFE600;display:flex;align-items:center;justify-content:center}
 .cb-head .cb-ic svg{width:19px;height:19px;stroke:#111;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
