@@ -283,31 +283,24 @@ const SUGGEST = [
 ];
 const CONTACT = "tu supervisor zonal, Roberto Dumenes, por WhatsApp al +56 9 6591 4945";
 
-// Imágenes que se muestran bajo la respuesta según la fuente citada (documento + página).
-const IMAGES = {
-  "instructivo resumen giros|1": [
-    {src:"/img/giros-depositos.png", alt:"Pantalla Depósitos"},
-    {src:"/img/giros-khipu-bancos.jpg", alt:"Selección de banco (Khipu)"},
-    {src:"/img/giros-menu.png", alt:"Menú Back Office"}
-  ],
-  "instructivo resumen giros|2": [
-    {src:"/img/giros-ingreso-diferencia.png", alt:"Ingreso de Diferencia"},
-    {src:"/img/giros-menu-diferencia.png", alt:"Menú: Ingreso de diferencia"}
-  ]
+// Imágenes que se muestran bajo la respuesta según el TEMA detectado en el texto.
+const IMG = {
+  depositos: {src:"/img/giros-depositos.png", alt:"Pantalla Depósitos"},
+  khipu:     {src:"/img/giros-khipu-bancos.jpg", alt:"Selección de banco (Khipu)"},
+  menu:      {src:"/img/giros-menu.png", alt:"Menú Back Office"},
+  diferencia:{src:"/img/giros-ingreso-diferencia.png", alt:"Ingreso de Diferencia"},
+  menuDif:   {src:"/img/giros-menu-diferencia.png", alt:"Menú: Ingreso de diferencia"}
 };
-function normDoc(s){ return s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,' ').trim(); }
-function imagesFor(src){
-  const out = [];
-  src.split('/').forEach(part => {
-    const pm = part.match(/p[aá]g\.?\s*(\d+)/i);
-    if (!pm) return;
-    const page = pm[1];
-    const doc = normDoc(part.slice(0, pm.index));
-    for (const key in IMAGES){
-      const bar = key.lastIndexOf('|'); const kdoc = key.slice(0,bar), kpage = key.slice(bar+1);
-      if (page === kpage && doc.indexOf(kdoc) !== -1) IMAGES[key].forEach(im => { if (!out.some(o=>o.src===im.src)) out.push(im); });
-    }
-  });
+const IMAGE_TOPICS = [
+  { any:["deposit","khipu","cupo"], imgs:[IMG.depositos, IMG.khipu, IMG.menu] },
+  { any:["ingreso de diferencia","declarar diferencia","despago","siniestro","reinstalaci"], imgs:[IMG.diferencia, IMG.menuDif] }
+];
+function normTxt(s){ return s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,''); }
+function imagesFor(text){
+  const t = normTxt(text), out = [];
+  for (const topic of IMAGE_TOPICS){
+    if (topic.any.some(k => t.indexOf(normTxt(k)) !== -1)) topic.imgs.forEach(im => { if (!out.some(o=>o.src===im.src)) out.push(im); });
+  }
   return out;
 }
 
@@ -330,6 +323,7 @@ document.body.classList.add(isMobile ? "is-mobile" : "is-desktop");
 
 function esc(s){return s.replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));}
 function render(md){
+  const fullText = md;
   let src = "";
   const m = md.match(/\n?\s*Fuente:\s*([^\n]+)\s*$/i);
   if (m){ src = m[1]; md = md.slice(0, m.index); }
@@ -344,8 +338,8 @@ function render(md){
   }
   if (list) html += "</"+list+">";
   if (src) html += '<span class="cb-src">Fuente: '+inline(src)+"</span>";
-  if (src) {
-    const imgs = imagesFor(src);
+  {
+    const imgs = imagesFor(fullText);
     if (imgs.length) {
       html += '<div class="cb-imgs">';
       for (const im of imgs) html += '<a href="'+im.src+'" target="_blank" rel="noopener"><img src="'+im.src+'" alt="'+esc(im.alt)+'" loading="lazy"><small>'+esc(im.alt)+'</small></a>';
