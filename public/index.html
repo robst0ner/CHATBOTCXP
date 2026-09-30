@@ -317,6 +317,7 @@ async function ask(text){
   q.value = ""; autosize();
   const bubble = add("bot", "Buscando en los manuales\u2026");
   bubble.classList.add("cb-think");
+  const waking = setTimeout(() => { if (busy) bubble.textContent = "El asistente estaba en reposo, despertando\u2026 La primera consulta puede tardar hasta ~40 segundos. Ya vuelvo."; }, 5000);
   turns.push({role:"user", content:text});
   ctl = new AbortController();
   setBusy(true);
@@ -338,7 +339,7 @@ async function ask(text){
       bubble.innerHTML = "<p>" + esc((e && e.code==="http" && e.message) ? e.message : "No pude responder por un problema de conexi\u00f3n. Intenta enviar la pregunta de nuevo.") + "</p>";
     }
   }finally{
-    setBusy(false); ctl = null; toEnd();
+    clearTimeout(waking); setBusy(false); ctl = null; toEnd();
     if (!panel.hidden && !isMobile) q.focus();
   }
 }

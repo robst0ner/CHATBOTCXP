@@ -51,6 +51,8 @@ app.post('/api/chat', chatLimiter, async (req, res) => {
     res.json({ text });
   } catch (e) {
     console.error('chat', e?.status || '', e?.message);
+    const limited = /429|quota|rate|exhaust|resource has been|limit/i.test(e?.message || '');
+    if (limited) return res.status(429).json({ error: 'Se alcanzó el límite de consultas por ahora (servicio gratuito). Prueba de nuevo en un rato o escribe a tu supervisor por WhatsApp al +56 9 6591 4945.' });
     res.status(502).json({ error: FRIENDLY_ERROR });
   }
 });
